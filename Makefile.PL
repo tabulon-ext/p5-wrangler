@@ -57,7 +57,7 @@ WriteMakefile(
 		# possible. Also the authors wish to highlight these influential modules:
 		# Padre: The Perl 5 License (Artistic 1 & GPL 1)
 		# Kephra: The GNU General Public License, Version 2, June 1991
-		# Perl5 itself is free software; you can redistribute it and/or modify it under the terms of either: a) the GNU General Public License as published by the Free Software Foundation; either external linkversion 1, or (at your option) any later version, or b) the "Artistic License". 
+		# Perl5 itself is free software; you can redistribute it and/or modify it under the terms of either: a) the GNU General Public License as published by the Free Software Foundation; either external linkversion 1, or (at your option) any later version, or b) the "Artistic License".
 
 	},
 	BUILD_REQUIRES	=> {
