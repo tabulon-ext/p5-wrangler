@@ -129,7 +129,9 @@ sub richproperties {
 
 sub richlist {
 	my $self = shift;
-	my $path = Cwd::abs_path(shift); # see note on abs_path in list()
+															#  TAU: abs_path is not needed here, as it is alreday invoked the actual FileSystem implementation.
+															# 			When present, it actually causes trouble with tests that expect the same path passed in to be returned in array context.
+	my $path = shift;						# Cwd::abs_path(shift); # see note on abs_path in list()
 	my $wishlist = shift;
 	# Wrangler::debug("Layers::richlist: @$wishlist") if $wishlist;
 

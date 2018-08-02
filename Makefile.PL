@@ -13,6 +13,7 @@ WriteMakefile(
 	ABSTRACT_FROM	=> 'lib/Wrangler.pm',
 	VERSION_FROM	=> 'lib/Wrangler.pm',
 	LICENSE		=> 'restricted',
+	MIN_PERL_VERSION => '5.014',			# TAU: smartmatch (~~) was being used in several places, causing 'experiemntal' warnings.
 	PREREQ_PM	=> {
 		'Alien::wxWidgets'	=> 0,		# The Perl 5 License (Artistic 1 & GPL 1)
 							#  -> wxWidgets: wxWidgets is currently licenced under the "wxWindows Library Licence" pending approval of the "wxWidgets Library Licence" which will be identical apart from the name. "but basically you can distribute proprietary binaries without distributing any source code, and neither will wxWidgets conflict with GPL code you may be using or developing with it."
@@ -43,7 +44,18 @@ WriteMakefile(
 # unused in 2.x	'WWW::Mechanize::DecodedContent' => 0,	# The Perl 5 License (Artistic 1 & GPL 1)
 		'Wx'			=> 0,		# The Perl 5 License (Artistic 1 & GPL 1)
 		'Wx::Perl::Packager'	=> 0,		# in README: This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
-		'Wx::TreeListCtrl'	=> 0,		# in README: This library is free software; you can redistribute it and/or modify it under the same terms as Perl itself
+
+# TAU: 'Wx::TreeListCtrl'appears to be no longer needed as it it is now included in Wx itself.
+#      'Wx::TreeListCtrl'	=> 0,		# in README: This library is free software; you can redistribute it and/or modify it under the same terms as Perl itself
+
+# TAU: Added the following dependencies
+		'File::Trash::FreeDesktop' => 0.19,			# TAU: So that ::Filesystem::Linux doesn't need 'gvfs-trash' binary. This way, it trashing pases tests on macOS too.
+		'Try::Tiny' => 0.30,										# TAU: For easily making use of the <File::Trash::FreeDesktop>.
+
+
+
+
+
 # unused in 2.x	'XML::ASX'		=> 0,		# only copyright, no licensing
 # unused in 2.x	'XML::Simple'		=> 0,		# The Perl 5 License (Artistic 1 & GPL 1)
 

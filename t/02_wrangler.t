@@ -9,7 +9,14 @@ use Wrangler::FileSystem::Linux;
 use File::Temp ();
 
 ## prepare a test-dir
-my $dir = File::Temp::tempdir( CLEANUP => 1 );
+# my $dir = File::Temp::tempdir( CLEANUP => 1 );
+
+# TAU: Provide a template so that the test that performs a regex check on the generated name does not have to rely on
+# 		 the location being under '/tmp/'. The below basically gives another pattern for sanity checks, without relying
+#			 on any hard-coded location.
+my $dir = File::Temp::tempdir('wrangler_test_tmp_XXXXXX', TMPDIR => 1, CLEANUP => 1 );		# TAU.  Provide a template.
+
+
 # print STDOUT "temp-dir: $dir\n";
 for('text.txt','video.mp4','image.jpg'){
 	open(my $FILE, '>', File::Spec->catfile($dir, $_) ) or die "Failed to open ". File::Spec->catfile($dir, $_) .": $!";
@@ -306,26 +313,28 @@ for('text.txt','video.mp4','image.jpg'){
 		my $props = $wrangler->{fs}->richproperties($dir.'/image.jpg');
 		cmp_deeply($props, {
 			'Filesystem::inode' => re('\d+'),
-			'Filesystem::uid' => 1000,
-			'Filesystem::gid' => 1000,
+			'Filesystem::uid' => ignore(),			# 1000,			TAU: ignoring because you simply can't expect this to be a constant!
+			'Filesystem::gid' => ignore(),		  # 1000,			TAU: ignoring because you simply can't expect this to be a constant!
 			'Filesystem::nlink' => 1,
 			'Filesystem::Hidden' => 0,
 			'Filesystem::Type' => 'File',
 			'Filesystem::rdef' => 0,
 			'Filesystem::dev' => re('\d+'),
-			'Filesystem::Blocks' => 8,
+			'Filesystem::Blocks' => ignore(), 			# 8,			TAU: ignoring for now, because this may vary depending on OS/FS/...
 			'Filesystem::Size' => 7,
 			'Filesystem::Modified' => re('\d{10}'),
 			'Filesystem::Accessed' => re('\d{10}'),
 			'Filesystem::Changed' => re('\d{10}'),
-			'Filesystem::Blocksize' => 4096,
+			'Filesystem::Blocksize' => ignore(), 	#  4096,		TAU: ignoring for now, because this may vary depending on OS/FS/...
 			'Filesystem::Suffix' => 'jpg',
 			'Filesystem::Path' => re('\/image.jpg$'),
 			'Filesystem::Filename' => 'image.jpg',
 			'Filesystem::Basename' => 'image',
-			'Filesystem::Directory' => re('^/tmp/'),
+			# TAU: We now use a a template pattern when we create the temp directory (at the start of this test script),
+			# so that we can do the sort of sanity check below without counting on a hard-coded location.
+			'Filesystem::Directory' => re('wrangler_test_tmp_'),  		# re('^/tmp/'),
 			'Filesystem::Xattr' => 1,
-			'Filesystem::mode' => 33204,
+			'Filesystem::mode' => ignore(), 		# 	33204,	TAU: ignoring for now, because this may vary depending on sveral things such as UMASK 
 			'MIME::Type' => 'image/jpeg',
 			'MIME::mediaType' => 'image',
 			'MIME::subType' => 'jpeg',
@@ -377,7 +386,8 @@ for('text.txt','video.mp4','image.jpg'){
 		is( scalar(@$properties), 25, 'available_properties() returns expected keys');
 
 		$properties = $wrangler->{fs}->available_properties($dir);
-		is( scalar(@$properties), 26, 'available_properties($dir) returns expected keys');
+#		is( scalar(@$properties), 26, 'available_properties($dir) returns expected keys');
+		cmp_ok( scalar(@$properties), '>=', 26, 'available_properties($dir) returns at least the expected keys');		# TAU: Allow more properties to be returned (than the expected set)
 
 
 		## tests of richlist() -> list():
@@ -397,7 +407,9 @@ for('text.txt','video.mp4','image.jpg'){
 		for(@$richlist){
 			$cnt += scalar(keys %$_);
 		}
-		is( $cnt, 126, 'richlist() corrects empty $wishlist ref');
+
+#		is( $cnt, 126, 'richlist() corrects empty $wishlist ref');
+		cmp_ok( $cnt, '>=', 126, 'richlist() corrects empty $wishlist ref');		# TAU: Allow more properties to be returned (than the expected set)
 
 		$richlist = $wrangler->{fs}->richlist($dir, ['Filesystem::Modified', 'Extended Attributes::testkey']);
 		$cnt = 0;
@@ -416,4 +428,3 @@ for('text.txt','video.mp4','image.jpg'){
 		# print STDOUT Dumper($richlist);
 	} # / $wishlist
 }
-

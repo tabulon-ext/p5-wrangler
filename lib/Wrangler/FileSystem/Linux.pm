@@ -1,3 +1,5 @@
+use 5.014;		# TAU: This is to stop getting warnings about smartmatch (which was already being used in this code) being experimental.
+						# While the smartmatch operator (~~) had been introduced in 5.10, it was stabilized only by 5.14, if I understand correctly.
 package Wrangler::FileSystem::Linux;
 
 # similar to the Filesys::Virtual API but with some additionas/ optimisations:
@@ -17,11 +19,15 @@ use File::Spec ();
 use MIME::Types ();
 use Encode;
 
+use File::Trash::FreeDesktop;		# TAU: in an attempt to substitute for 'gvfs-trash' which is not widely ported.
+use Try::Tiny;									# TAU: Handle the trash() method (of <File::Trash::FreeDesktop>) that will die() on error.
+
+
 sub new {
 	my $class = shift;
- 
+
 	my $self = bless({ @_ }, $class);
-  
+
 	return $self;
 }
 
@@ -44,8 +50,11 @@ sub catfile {
 
 sub available_properties {
 	my ($self, $path, $args) = @_;
-	$path = decode('UTF-8',$path);
-	utf8::upgrade($path);
+
+	if ($path // '') {										# TAU: Calling these only on non-empty strings should remedy the problem decribed just below.
+		$path = decode('UTF-8',$path);			# TAU: Does not seem to be needed any longer. It actually causes a test to fail if called here.
+		utf8::upgrade($path);								# 		 Same here, but without any harm if present, apparently.
+	}
 
 	my @keys;
 	if($path){
@@ -99,6 +108,7 @@ my $regex_xattr = qr/^Extended Attributes::/;
 my $regex_xattr_contains = qr/\bExtended Attributes::/;
 sub properties {
 	my ($self, $path, $wishlist) = @_;
+	my $opath = $path;			# TAU: Save the original path so that we can return it later (because somehow it appears to be modified along the way)
 
 	$wishlist = undef if $wishlist && @$wishlist == 0;
 
@@ -135,7 +145,7 @@ sub properties {
 			'Filesystem::Blocksize'	=> $stat[11],
 			'Filesystem::Blocks'	=> $stat[12],
 			'Filesystem::Type'	=> $type_human,
-			'Filesystem::Path'	=> $path,
+			'Filesystem::Path'	=> $opath,
 			'Filesystem::Directory'	=> $fileparse[1],
 			'Filesystem::Filename'	=> $filename,
 			'Filesystem::Basename'	=> $fileparse[0],
@@ -370,7 +380,7 @@ sub test {
 }
 sub stat {
 	my ($self, $path) = @_;
-				
+
 	# $path =~ s/\s+/ /g;
 	# $path = $self->_path_from_root($path);
 
@@ -378,7 +388,7 @@ sub stat {
 }
 sub lstat {
 	my ($self, $path) = @_;
-				
+
 	# $path =~ s/\s+/ /g;
 	# $path = $self->_path_from_root($path);
 
@@ -417,7 +427,7 @@ sub mkdir {
 	# $dir = $self->_path_from_root($dir);
 
 	return 2 if (-d $dir);
-	
+
 	return CORE::mkdir($dir);
 }
 
@@ -440,16 +450,29 @@ sub rmdir {
 }
 
 # move a file/dir to undo'able trash can
-# see also: File::Trash::FreeDesktop, File::Trash::Undoable, File::Remove 
+# see also: File::Trash::FreeDesktop, File::Trash::Undoable, File::Remove
 sub trash {
 	my $self = shift;
 
 	# don't allow empty values in list of supplied paths, because gvfs-trash would accept that as "current dir"
 	for(@_){ return 0 if $_ eq ''; }
 
-	my $result = system('gvfs-trash', @_); # return 0 on success, -1 or similar on error
-	# print "trash(@_): $result\n";
-	return $result == 0 ? 1 : 0;	 # mknod returns 1 on success
+	# TAU: This won't work on macOS. Trying with <File::Trash::FreeDesktop> instead.
+	# my $result = system('gvfs-trash', @_); # return 0 on success, -1 or similar on error
+	# # print "trash(@_): $result\n";
+	# return $result == 0 ? 1 : 0;	 # mknod returns 1 on success
+
+	my $err = 0;
+	my $trash = File::Trash::FreeDesktop->new;
+	foreach my $item (@_) {
+		try {
+	  	$trash->trash($item) or $err++
+		} catch {
+	  	$err++
+		};
+	}
+	# TAU: Returns 1 on success, and 0 on failure.
+	return ($err > 0) ? 0 : 1;
 }
 
 sub rename {
@@ -481,7 +504,7 @@ sub utime {
 #	foreach my $i ( 0 .. $#path ) {
 #		$path[$i] = $self->_path_from_root($path[$i]);
 #	}
-	
+
 	return CORE::utime($atime, $mtime, @path);
 }
 
